@@ -14,7 +14,11 @@ app.post("/upload", async (req, res) => {
   if (!isCorrect) return;
   // 2. 'repo' 폴더에 소스코드 저장
   // 혹시나 동시에 여러 요청이 오거나 중복되는 폴더 이름이 올 수 있으니 uuid로 폴더 생성 후 해당 폴더 내부에서 gitclone 하기
-
+  const rootDir = await new Promise((resolve, reject) => {
+    exec("pwd", (_, stdout) => {
+      resolve(stdout.slice(0, stdout.length - 1));
+    });
+  });
   const repoName = getCloneRepoName(
     "https://github.com/Junejae1625/Numble_reference.git"
   );
@@ -33,10 +37,31 @@ app.post("/upload", async (req, res) => {
     );
   });
 
-  const path = `repo/${UNIQUE}/${repoName}/pages`;
-  exec(`cd ${path} && ls`, (_, stdout) => {
-    console.log(stdout);
+  const index = ["_app.tsx", "_app.js", "index.js", "index.tsx"];
+  const pagesData = [];
+  const path = `${rootDir}/repo/${UNIQUE}/${repoName}/pages`;
+
+  const pages = await new Promise((resovle, reject) => {
+    exec(
+      `cd ${rootDir}/repo/${UNIQUE}/${repoName}/pages && ls`,
+      (_, stdout) => {
+        resovle(stdout.split("\n"));
+      }
+    );
   });
+  pages
+    .filter((el) => el)
+    .forEach((el) => {
+      if (index.includes(el)) {
+        exec(`cat ${path}/${el}`, (_, stdout) => {
+          console.log(stdout);
+        });
+      } else {
+        exec(`cat ${path}/${el}/index.tsx`, (_, stdout) => {
+          console.log(stdout);
+        });
+      }
+    });
   // git clone 한 폴더명 뽑아온 후 repo담기
 
   // 3. 파일열기
@@ -61,7 +86,7 @@ app.post("/upload", async (req, res) => {
   // });
 
   exec(`cd repo && rm -rf ${UNIQUE}`);
-  res.send({ name: "asdfsaf" });
+  res.send({ name: "끄읕~" });
   res.sendHtml;
 });
 
