@@ -1,18 +1,20 @@
-function aaa(obj) {
-  if (obj.children) {
+function returnLinkObj(obj, box, nodeList) {
+  if (obj.children !== undefined) {
     obj.children.map((a) => {
-      return aaa(a);
+      box.push({
+        source: nodeList.indexOf(obj.componentName),
+        target: nodeList.indexOf(a.componentName),
+      });
+      return returnLinkObj(a, box, nodeList);
     });
-  } else {
-    return "";
   }
-
-  return { source: obj.componentName };
 }
 
-export function makeLinks(arr) {
-  const links = arr.map((e) => {
-    return aaa(e);
+export function makeLinks(arr, resultNode) {
+  const result = [];
+  const nodeList = resultNode.map((el) => el.componentName);
+  arr.map((el) => {
+    return returnLinkObj(el, result, nodeList);
   });
-  console.log(links);
+  return result;
 }

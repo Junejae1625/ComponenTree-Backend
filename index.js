@@ -1,12 +1,11 @@
 import express from "express";
-
 import { exec, execSync } from "child_process";
 import { v4 as uuidv4 } from "uuid";
 import { getCloneRepoName } from "./commons/getCloneRepoName/index.js";
 import { isCorrectUrl } from "./commons/validation/gitUrlValidation/index.js";
-
 import { calcPwd } from "./commons/calcPwd/index.js";
 import { makeLinks } from "./commons/makeLinks/index.js";
+import { makeNodes } from "./commons/makeNodes/index.js";
 const app = express();
 
 app.post("/upload", async (req, res) => {
@@ -113,10 +112,15 @@ app.post("/upload", async (req, res) => {
       if (el.includes("export default ")) {
         if (el.includes("function")) {
           let tempName = el.split("export default function ");
-          componentName = tempName[tempName.length - 1].split("()")[0];
+          componentName = tempName[tempName.length - 1]
+            .split("()")[0]
+            .replace(" {", "")
+            .replace(";", "");
         } else {
           let tempName = el.split("export default ");
-          componentName = tempName[tempName.length - 1];
+          componentName = tempName[tempName.length - 1]
+            .replace(" {", "")
+            .replace(";", "");
         }
       }
       return "";
@@ -143,8 +147,12 @@ app.post("/upload", async (req, res) => {
   }
 
   // console.log(JSON.stringify(nodeData, "폴더", "  "));
-  makeLinks(nodeData);
 
+  const resultNode = makeNodes(nodeData);
+  const resultLink = makeLinks(nodeData, resultNode);
+
+  console.log("resultNode: ", resultNode);
+  console.log("resultLink: ", resultLink);
   // ================================================================================
   // clone 한 폴더 삭제
   exec(`cd repo && rm -rf ${UNIQUE}`);
