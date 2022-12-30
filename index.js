@@ -6,13 +6,16 @@ import { isCorrectUrl } from "./commons/validation/gitUrlValidation/index.js";
 import { calcPwd } from "./commons/calcPwd/index.js";
 import { makeLinks } from "./commons/makeLinks/index.js";
 import { makeNodes } from "./commons/makeNodes/index.js";
-const app = express();
+import cors from "cors";
 
+const app = express();
+app.use(cors());
+app.use(express.json());
 app.post("/upload", async (req, res) => {
+  const url = req.body.url;
+  const type = req.body.type;
   // 1. 올바른 repo 주소인지 검증
-  const isCorrect = isCorrectUrl(
-    "https://github.com/Junejae1625/Numble_reference.git"
-  );
+  const isCorrect = isCorrectUrl(url);
   if (!isCorrect) return;
   // 2. 'repo' 폴더에 소스코드 저장
 
@@ -21,14 +24,12 @@ app.post("/upload", async (req, res) => {
       resolve(stdout.slice(0, stdout.length - 1));
     });
   });
-  const repoName = getCloneRepoName(
-    "https://github.com/Junejae1625/Numble_reference.git"
-  );
+  const repoName = getCloneRepoName(url);
   // 혹시나 동시에 여러 요청이 오거나 중복되는 폴더 이름이 올 수 있으니 uuid로 폴더 생성 후 해당 폴더 내부에서 gitclone 하기
   const UNIQUE = uuidv4();
   await new Promise((resolve, reject) => {
     exec(
-      `cd repo && mkdir ${UNIQUE} && cd ${UNIQUE} && git clone https://github.com/Junejae1625/Numble_reference.git`,
+      `cd repo && mkdir ${UNIQUE} && cd ${UNIQUE} && git clone ${url}`,
       (error, stdout) => {
         if (error) {
           throw new Error("github 주소를 확인해주세요");
@@ -38,12 +39,10 @@ app.post("/upload", async (req, res) => {
     );
   });
 
-  const react = "_app.tsx";
-  const next = "pages";
   const extension = ["tsx", "js"];
   const path = `${rootDir}/repo/${UNIQUE}/${repoName}`;
 
-  const pagesList = execSync(`tree -fa ${path}/${next}`, { encoding: "utf-8" })
+  const pagesList = execSync(`tree -fa ${path}/${type}`, { encoding: "utf-8" })
     .split("├── ")
     .join("")
     .split("│")
@@ -146,19 +145,14 @@ app.post("/upload", async (req, res) => {
     return result;
   }
 
-  // console.log(JSON.stringify(nodeData, "폴더", "  "));
-
   const resultNode = makeNodes(nodeData);
   const resultLink = makeLinks(nodeData, resultNode);
 
-  console.log("resultNode: ", resultNode);
-  console.log("resultLink: ", resultLink);
   // ================================================================================
   // clone 한 폴더 삭제
-  exec(`cd repo && rm -rf ${UNIQUE}`);
-  res.send({ name: "끝" });
-  res.sendHtml;
+  exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
+  res.send({ resultNode, resultLink });
 });
 
 console.log("연결");
-app.listen(3000);
+app.listen(4000);
