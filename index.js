@@ -3,10 +3,10 @@ import { exec, execSync } from "child_process";
 import { v4 as uuidv4 } from "uuid";
 import { getCloneRepoName } from "./commons/getCloneRepoName/index.js";
 import { isCorrectUrl } from "./commons/validation/gitUrlValidation/index.js";
-import { calcPwd } from "./commons/calcPwd/index.js";
 import { makeLinks } from "./commons/makeLinks/index.js";
 import { makeNodes } from "./commons/makeNodes/index.js";
 import cors from "cors";
+import { calcPwd } from "./commons/calcPwd/index.js";
 
 const app = express();
 app.use(cors());
@@ -42,6 +42,8 @@ app.post("/upload", async (req, res) => {
   const extensionList = ["tsx", "js"];
   let curExtension = "js";
   const path = `${rootDir}/repo/${UNIQUE}/${repoName}`;
+
+  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // next.js 일때
   if (type == "pages") {
     const pagesList = execSync(`tree -fa ${path}/${type}`, {
@@ -111,7 +113,14 @@ app.post("/upload", async (req, res) => {
               !tempPath.includes("next") &&
               !tempPath.includes("@")
             ) {
-              return calcPwd(path, tempPath, curExtension);
+              return calcPwd(
+                rootDir,
+                UNIQUE,
+                repoName,
+                path,
+                tempPath,
+                curExtension
+              );
             }
           }
         }
@@ -158,126 +167,132 @@ app.post("/upload", async (req, res) => {
     const resultNode = makeNodes(nodeData);
     const resultLink = makeLinks(nodeData, resultNode);
 
+    console.log(JSON.stringify(nodeData, null, 2), resultNode, resultLink);
     ////////////////////////////////////////////////////////////////////////
     // clone 한 폴더 삭제
     exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
     res.send({ resultNode, resultLink });
-  } else {
-    // react 일때
-    exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
-    res.send("hihi");
   }
 
-  // const pagesList = execSync(`tree -fa ${path}/${type}`, { encoding: "utf-8" })
-  //   .split("├── ")
-  //   .join("")
-  //   .split("│")
-  //   .join("")
-  //   .split("└──")
-  //   .join("")
-  //   .split("\n")
-  //   .filter((el) => el)
-  //   .map((e) => {
-  //     return e.trim();
-  //   });
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // react 일때
+  else {
+    const appList = execSync(`find ${path}/src -name App*`, {
+      encoding: "utf-8",
+    });
 
-  // const tempnodeData = pagesList.map((el) => {
-  //   const temp = el.split(".");
-  //   const isFile = temp[temp.length - 1];
-  //   el = el.slice(1);
-  //   if (extension.includes(isFile)) {
-  //     return el;
-  //   } else {
-  //     return "";
-  //   }
-  // });
+    const tempAppList = appList
+      .split("\n")
+      .filter((e) => e)
+      .filter((el) => {
+        const tempSplit = el.split("/");
+        if (
+          tempSplit[tempSplit.length - 1] === "App.js" ||
+          tempSplit[tempSplit.length - 1] === "App.tsx"
+        ) {
+          const tempDot = tempSplit[tempSplit.length - 1].split(".");
+          curExtension = tempDot[tempDot.length - 1];
+          return el;
+        }
+      });
 
-  // const nodeData = tempnodeData
-  //   .filter((el) => el)
-  //   .map((el) => {
-  //     el = el.split("/");
-  //     const index = el[el.length - 1];
-  //     const folderPath = el.filter((_, i) => i < el.length - 1).join("/");
+    const reactNodeData = tempAppList.map((el) => {
+      el = el.split("/");
+      let index = el[el.length - 1];
+      const tempIndex = index.split(".");
+      index = tempIndex[0] + "." + curExtension;
+      const folderPath = el.filter((_, i) => i < el.length - 1).join("/");
+      return readReactFile({ path: folderPath, index });
+    });
 
-  //     return readFile({ path: "/" + folderPath, index });
-  //   });
+    function readReactFile({ path, index }) {
+      ////////////////////////////////////////////////////////////////////////
+      let componentName = "";
 
-  // function readFile({ path, index }) {
-  //   ////////////////////////////////////////////////////////////////////////
-  //   let componentName = "";
+      let file = "";
+      if (path === undefined) return undefined;
+      path = path.replace("\n", "");
+      file = execSync(`cd ${path} && cat ${path}/${index}`, {
+        encoding: "utf-8",
+      });
 
-  //   let file = "";
-  //   if (path === undefined) return undefined;
-  //   path = path.replace("\n", "");
-  //   file = execSync(`cd ${path} && cat ${path}/${index}`, {
-  //     encoding: "utf-8",
-  //   });
+      ////////////////////////////////////////////////////////////////////////
 
-  //   ////////////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////////////
+      const tempFileArr = file.split("\n");
+      const importPaths = tempFileArr.map((el) => {
+        if (el.includes("import")) {
+          el = el.split("import ").join("").split(" from ");
+          if (el.length > 1) {
+            let [tempName, tempPath] = el;
+            if (
+              !tempName.includes("{") &&
+              !tempName.includes("*") &&
+              !tempName.includes("styled") &&
+              !tempPath.includes("next") &&
+              !tempPath.includes("@")
+            ) {
+              return calcPwd(
+                rootDir,
+                UNIQUE,
+                repoName,
+                path,
+                tempPath,
+                curExtension
+              );
+            }
+          }
+        }
 
-  //   ////////////////////////////////////////////////////////////////////////
-  //   const tempFileArr = file.split("\n");
-  //   const importPaths = tempFileArr.map((el) => {
-  //     if (el.includes("import")) {
-  //       el = el.split("import ").join("").split(" from ");
-  //       if (el.length > 1) {
-  //         let [tempName, tempPath] = el;
-  //         if (
-  //           !tempName.includes("{") &&
-  //           !tempName.includes("*") &&
-  //           !tempName.includes("styled") &&
-  //           !tempPath.includes("next") &&
-  //           !tempPath.includes("@")
-  //         ) {
-  //           return calcPwd(path, tempPath);
-  //         }
-  //       }
-  //     }
+        if (el.includes("export default ")) {
+          if (el.includes("function")) {
+            let tempName = el.split("export default function ");
+            componentName = tempName[tempName.length - 1]
+              .split("()")[0]
+              .replace(" {", "")
+              .replace(";", "");
+          } else {
+            let tempName = el.split("export default ");
+            componentName = tempName[tempName.length - 1]
+              .replace(" {", "")
+              .replace(";", "");
+          }
+        }
+        return "";
+      });
+      ////////////////////////////////////////////////////////////////////////
 
-  //     if (el.includes("export default ")) {
-  //       if (el.includes("function")) {
-  //         let tempName = el.split("export default function ");
-  //         componentName = tempName[tempName.length - 1]
-  //           .split("()")[0]
-  //           .replace(" {", "")
-  //           .replace(";", "");
-  //       } else {
-  //         let tempName = el.split("export default ");
-  //         componentName = tempName[tempName.length - 1]
-  //           .replace(" {", "")
-  //           .replace(";", "");
-  //       }
-  //     }
-  //     return "";
-  //   });
-  //   ////////////////////////////////////////////////////////////////////////
+      const importPath = importPaths
+        .filter((el) => el)
+        .map((el) => el.resultPwd);
 
-  //   const importPath = importPaths.filter((el) => el).map((el) => el.resultPwd);
+      const temp = importPaths
+        .filter((el) => el)
+        .map((el) => {
+          return readReactFile({
+            path: el.resultPwd,
+            index: el.rest,
+          });
+        });
 
-  //   const temp = importPaths
-  //     .filter((el) => el)
-  //     .map((el) => {
-  //       return readFile({
-  //         path: el.resultPwd,
-  //         index: el.rest,
-  //       });
-  //     });
+      const result = {
+        componentName,
+      };
+      if (importPath.length) result.importPath = importPath;
+      if (temp.length) result.children = temp;
+      return result;
+    }
 
-  //   const result = {
-  //     componentName,
-  //   };
-  //   if (importPath.length) result.importPath = importPath;
-  //   if (temp.length) result.children = temp;
-  //   return result;
-  // }
+    const resultNode = makeNodes(reactNodeData);
+    const resultLink = makeLinks(reactNodeData, resultNode);
 
-  // const resultNode = makeNodes(nodeData);
-  // const resultLink = makeLinks(nodeData, resultNode);
+    ////////////////////////////////////////////////////////////////////////
+    // clone 한 폴더 삭제
 
-  // ================================================================================
-  // clone 한 폴더 삭제
-  // exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
-  // res.send({ resultNode, resultLink });
+    console.log(JSON.stringify(reactNodeData, null, 2), resultNode, resultLink);
+    exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
+    res.send({ resultNode, resultLink });
+  }
 });
 
 console.log("연결");
