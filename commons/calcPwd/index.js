@@ -1,6 +1,13 @@
 import { execSync } from "child_process";
 import { fileChecker } from "../validation/checkFolder/index.js";
-export function calcPwd(curPwd, importPwd, curExtension) {
+export function calcPwd(
+  rootDir,
+  UNIQUE,
+  repoName,
+  curPwd,
+  importPwd,
+  curExtension
+) {
   importPwd = importPwd
     .replace(";", "")
     .split('"')
@@ -13,7 +20,7 @@ export function calcPwd(curPwd, importPwd, curExtension) {
   let resultPwd = "";
   let curEx = curExtension;
   const checkList = execSync(
-    `find /Users/byeonjaejun/Desktop/componentree-backend/repo -name ${isFolder}*`,
+    `find ${rootDir}/repo/${UNIQUE}/${repoName} -name ${isFolder}*`,
     { encoding: "utf-8" }
   );
   const checkListArr = checkList
@@ -22,9 +29,10 @@ export function calcPwd(curPwd, importPwd, curExtension) {
     .map((el) => {
       return fileChecker(el);
     });
-
+  const check = checkListArr[0];
   let rest = "index" + "." + curEx;
-  if (checkListArr.includes(true)) {
+
+  if (check === true) {
     // 파일일 경우
     const importPwdSplit = importPwd.split("/");
     rest = importPwdSplit[importPwdSplit.length - 1] + "." + curEx;
