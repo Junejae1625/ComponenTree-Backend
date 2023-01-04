@@ -11,7 +11,7 @@ import { calcPwd } from "./commons/calcPwd/index.js";
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.post("/upload", async (req, res) => {
+app.post("/upload", async (req, res, next) => {
   const url = req.body.url;
   let type = req.body.type;
   // 1. 올바른 repo 주소인지 검증
@@ -46,20 +46,26 @@ app.post("/upload", async (req, res) => {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // next.js 일때
   if (type == "pages") {
-    const pagesList = execSync(`tree -fa ${path}/${type}`, {
-      encoding: "utf-8",
-    })
-      .split("├── ")
-      .join("")
-      .split("│")
-      .join("")
-      .split("└──")
-      .join("")
-      .split("\n")
-      .filter((el) => el)
-      .map((e) => {
-        return e.trim();
-      });
+    let pagesList;
+    try {
+      pagesList = execSync(`tree -fa ${path}/${type}`, {
+        encoding: "utf-8",
+      })
+        .split("├── ")
+        .join("")
+        .split("│")
+        .join("")
+        .split("└──")
+        .join("")
+        .split("\n")
+        .filter((el) => el)
+        .map((e) => {
+          return e.trim();
+        });
+    } catch (err) {
+      execSync(`rm -rf ${rootDir}/repo/`);
+      return next("프로젝트가 React인지 Next인지 다시 확인해주세요.");
+    }
 
     const tempnodeData = pagesList.map((el) => {
       const temp = el.split(".");
@@ -67,7 +73,6 @@ app.post("/upload", async (req, res) => {
       if (isFile === "tsx") {
         curExtension = "tsx";
       }
-      // el = el.slice(1);
       if (extensionList.includes(isFile)) {
         return el;
       } else {
@@ -130,11 +135,13 @@ app.post("/upload", async (req, res) => {
             let tempName = el.split("export default function ");
             componentName = tempName[tempName.length - 1]
               .split("()")[0]
+              .split("(")[0]
               .replace(" {", "")
               .replace(";", "");
           } else {
             let tempName = el.split("export default ");
             componentName = tempName[tempName.length - 1]
+              .split("(")[0]
               .replace(" {", "")
               .replace(";", "");
           }
@@ -167,10 +174,9 @@ app.post("/upload", async (req, res) => {
     const resultNode = makeNodes(nodeData);
     const resultLink = makeLinks(nodeData, resultNode);
 
-    console.log(JSON.stringify(nodeData, null, 2), resultNode, resultLink);
     ////////////////////////////////////////////////////////////////////////
     // clone 한 폴더 삭제
-    exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
+    exec(`rm -rf ${rootDir}/repo/`);
     res.send({ resultNode, resultLink });
   }
 
@@ -180,6 +186,10 @@ app.post("/upload", async (req, res) => {
     const appList = execSync(`find ${path}/src -name App*`, {
       encoding: "utf-8",
     });
+    if (!appList) {
+      execSync(`rm -rf ${rootDir}/repo/${UNIQUE}`);
+      return next("프로젝트가 React인지 Next인지 다시 확인해주세요.");
+    }
 
     const tempAppList = appList
       .split("\n")
@@ -288,11 +298,13 @@ app.post("/upload", async (req, res) => {
 
     ////////////////////////////////////////////////////////////////////////
     // clone 한 폴더 삭제
-
-    console.log(JSON.stringify(reactNodeData, null, 2), resultNode, resultLink);
     exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
     res.send({ resultNode, resultLink });
   }
+});
+
+app.use((err, req, res, next) => {
+  res.status(500).json({ message: err });
 });
 
 console.log("연결");
