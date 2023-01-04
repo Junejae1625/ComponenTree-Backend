@@ -43,14 +43,20 @@ app.post("/upload", async (req, res, next) => {
   let curExtension = "js";
   const path = `${rootDir}/repo/${UNIQUE}/${repoName}`;
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // next.js 일때
   if (type == "pages") {
+    const pagePath = execSync(`find ${path}/ -name pages`, {
+      encoding: "utf-8",
+    });
+
     let pagesList;
     try {
-      pagesList = execSync(`tree -fa ${path}/${type}`, {
-        encoding: "utf-8",
-      })
+      pagesList = execSync(
+        `tree -fa ${path}/${pagePath.split(`${path}/`).join("")}`,
+        {
+          encoding: "utf-8",
+        }
+      )
         .split("├── ")
         .join("")
         .split("│")
@@ -72,6 +78,8 @@ app.post("/upload", async (req, res, next) => {
       const isFile = temp[temp.length - 1];
       if (isFile === "tsx") {
         curExtension = "tsx";
+      } else if (isFile === "ts") {
+        curExtension = "ts";
       }
       if (extensionList.includes(isFile)) {
         return el;
@@ -92,7 +100,6 @@ app.post("/upload", async (req, res, next) => {
       });
 
     function readFile({ path, index }) {
-      ////////////////////////////////////////////////////////////////////////
       let componentName = "";
 
       let file = "";
@@ -101,10 +108,6 @@ app.post("/upload", async (req, res, next) => {
       file = execSync(`cd ${path} && cat ${path}/${index}`, {
         encoding: "utf-8",
       });
-
-      ////////////////////////////////////////////////////////////////////////
-
-      ////////////////////////////////////////////////////////////////////////
       const tempFileArr = file.split("\n");
       const importPaths = tempFileArr.map((el) => {
         if (el.includes("import")) {
@@ -112,6 +115,7 @@ app.post("/upload", async (req, res, next) => {
           if (el.length > 1) {
             let [tempName, tempPath] = el;
             if (
+              !tempName.includes("//") &&
               !tempName.includes("{") &&
               !tempName.includes("*") &&
               !tempName.includes("styled") &&
@@ -148,7 +152,6 @@ app.post("/upload", async (req, res, next) => {
         }
         return "";
       });
-      ////////////////////////////////////////////////////////////////////////
 
       const importPath = importPaths
         .filter((el) => el)
@@ -174,13 +177,11 @@ app.post("/upload", async (req, res, next) => {
     const resultNode = makeNodes(nodeData);
     const resultLink = makeLinks(nodeData, resultNode);
 
-    ////////////////////////////////////////////////////////////////////////
     // clone 한 폴더 삭제
-    exec(`rm -rf ${rootDir}/repo/`);
+    exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
     res.send({ resultNode, resultLink });
   }
 
-  ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // react 일때
   else {
     const appList = execSync(`find ${path}/src -name App*`, {
@@ -216,7 +217,6 @@ app.post("/upload", async (req, res, next) => {
     });
 
     function readReactFile({ path, index }) {
-      ////////////////////////////////////////////////////////////////////////
       let componentName = "";
 
       let file = "";
@@ -226,9 +226,6 @@ app.post("/upload", async (req, res, next) => {
         encoding: "utf-8",
       });
 
-      ////////////////////////////////////////////////////////////////////////
-
-      ////////////////////////////////////////////////////////////////////////
       const tempFileArr = file.split("\n");
       const importPaths = tempFileArr.map((el) => {
         if (el.includes("import")) {
@@ -270,7 +267,6 @@ app.post("/upload", async (req, res, next) => {
         }
         return "";
       });
-      ////////////////////////////////////////////////////////////////////////
 
       const importPath = importPaths
         .filter((el) => el)
@@ -296,7 +292,6 @@ app.post("/upload", async (req, res, next) => {
     const resultNode = makeNodes(reactNodeData);
     const resultLink = makeLinks(reactNodeData, resultNode);
 
-    ////////////////////////////////////////////////////////////////////////
     // clone 한 폴더 삭제
     exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
     res.send({ resultNode, resultLink });
