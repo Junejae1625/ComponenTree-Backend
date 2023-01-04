@@ -27,9 +27,10 @@ export function calcPwd(
     .split("\n")
     .filter((el) => el)
     .map((el) => {
-      return fileChecker(el);
+      return fileChecker(el, curEx);
     });
-  const check = checkListArr[0];
+  const check = checkListArr[0].isFolder;
+  curEx = checkListArr[0].curEx === undefined ? curEx : checkListArr[0].curEx;
   let rest = "index" + "." + curEx;
 
   if (check === true) {
