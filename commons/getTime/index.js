@@ -5,5 +5,8 @@ export const getTime = () => {
   const dd = date.getDate();
   const hh = date.getHours();
   const min = date.getMinutes();
-  return `${yyyy}-${mm}-${dd}-${hh}-${min}`;
+  return `${yyyy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(
+    2,
+    "0"
+  )}, ${String(hh).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 };
