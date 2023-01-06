@@ -7,6 +7,7 @@ import { makeLinks } from "./commons/makeLinks/index.js";
 import { makeNodes } from "./commons/makeNodes/index.js";
 import cors from "cors";
 import { calcPwd } from "./commons/calcPwd/index.js";
+import { getTime } from "./commons/getTime/index.js";
 
 const app = express();
 app.use(cors());
@@ -173,13 +174,13 @@ app.post("/upload", async (req, res, next) => {
       if (temp.length) result.children = temp;
       return result;
     }
-
+    const time = getTime();
     const resultNode = makeNodes(nodeData);
     const resultLink = makeLinks(nodeData, resultNode);
 
     // clone 한 폴더 삭제
     exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
-    res.send({ resultNode, resultLink });
+    res.send({ resultNode, resultLink, time });
   }
 
   // react 일때
@@ -291,10 +292,10 @@ app.post("/upload", async (req, res, next) => {
 
     const resultNode = makeNodes(reactNodeData);
     const resultLink = makeLinks(reactNodeData, resultNode);
-
+    const time = getTime();
     // clone 한 폴더 삭제
     exec(`rm -rf ${rootDir}/repo/${UNIQUE}`);
-    res.send({ resultNode, resultLink });
+    res.send({ resultNode, resultLink, time });
   }
 });
 
