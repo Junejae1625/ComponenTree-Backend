@@ -12,6 +12,11 @@ import { getTime } from "./commons/getTime/index.js";
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+app.get("/", (_, res) => {
+  res.send("checking");
+});
+
 app.post("/upload", async (req, res, next) => {
   const url = req.body.url;
   let type = req.body.type;
